@@ -31,6 +31,7 @@ import {
 } from "./stream-switcher/quality";
 import { isCurrentStream, streamKey, SwitcherRow } from "./stream-switcher/switcher-row";
 import { useSwitcherRefresh } from "./stream-switcher/use-switcher-refresh";
+import { runnableStreamPlugins } from "@/lib/streams/plugins";
 
 function isHiddenAddon(addonId: string, addonName?: string): boolean {
   const id = (addonId || "").toLowerCase();
@@ -118,10 +119,16 @@ export function StreamSwitcher({
     (async () => {
       const installed = await fetchInstalledAddons().catch(() => [] as Addon[]);
       const stremio = authKey ? await userAddons(authKey).catch(() => [] as Addon[]) : [];
+      const plugins = runnableStreamPlugins();
       if (cancelled) return;
       const list = [...installed, ...stremio];
-      setAddonLogos(addonLogoMap(list));
-      setAddonNames(new Map(list.map((a) => [a.manifest.id, a.manifest.name])));
+      const logoMap = addonLogoMap(list);
+      plugins.forEach(({ id, icon }) => icon && logoMap.set(id, icon));
+      setAddonLogos(logoMap);
+      setAddonNames(new Map([
+        ...list.map((a) => [a.manifest.id, a.manifest.name] as const),
+        ...plugins.map(({ id, name }) => [id, name] as const),
+      ]));
     })();
     return () => {
       cancelled = true;
@@ -418,7 +425,7 @@ export function StreamSwitcher({
                 <SwitcherRow
                   key={`${s.addonId}-${s.infoHash ?? s.url ?? i}`}
                   stream={s}
-                  addonLogo={addonLogos.get(rowAddon?.id ?? s.addonId) ?? null}
+                  addonLogo={addonLogos.get(addonInstanceKey(s)) ?? null}
                   currentAddon={rowAddon}
                   currentName={isCurrent ? (currentRef?.name ?? null) : null}
                   onPick={() => onPick(s)}

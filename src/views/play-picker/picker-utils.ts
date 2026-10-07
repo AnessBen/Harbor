@@ -52,6 +52,8 @@ export function contributorLabel(s: ScoredStream): string {
 }
 
 export function addonInstanceKey(s: { addonUrl?: string; addonId: string }): string {
+  const isPlugin = s.addonId.startsWith("plugin");
+  if (isPlugin) return s.addonId;
   return s.addonUrl ?? s.addonId;
 }
 
