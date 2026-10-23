@@ -257,6 +257,8 @@ export function PlayPicker({
   drawerOpenRef.current = drawerOpen;
   const mainRef = useRef<HTMLElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const openDrawerWithScrollRef = useRef<(() => void) | null>(null);
+  const closeDrawerWithScrollRef = useRef<(() => void) | null>(null);
   const [strictMode, setStrictMode] = useState(settings.streamFilterLevel === "strict");
   const [forceShowAll, setForceShowAll] = useState(false);
   const filterDisabled = settings.streamFilterLevel === "off" || forceShowAll || isDownload;
@@ -537,30 +539,49 @@ export function PlayPicker({
 
       if (settings.pickerLayout !== "condensed" || !node) return;
 
+      let scrollFrame = 0;
+      let measureFrame = 0;
+      let scrollPending = false;
       const scrollToSourceDrawer = (gap = 20) => {
+        if (drawerOpenRef.current || scrollPending) return;
+        scrollPending = true;
         setDrawerOpen(true);
-        setTimeout(() => {
-          if (!node) return;
-          const drawerEl = drawerRef.current;
-          const maxScroll = Math.max(0, node.scrollHeight - node.clientHeight);
-          if (!drawerEl) {
-            node.scrollTo({ top: maxScroll, behavior: "smooth" });
-            return;
-          }
-          const drawerTop = drawerEl.offsetTop;
-          const targetScroll = Math.max(0, Math.min(drawerTop - gap, maxScroll));
-          node.scrollTo({ top: targetScroll, behavior: "smooth" });
-        }, 0);
+        scrollFrame = requestAnimationFrame(() => {
+          scrollFrame = 0;
+          measureFrame = requestAnimationFrame(() => {
+            measureFrame = 0;
+            scrollPending = false;
+            if (!node.isConnected || !drawerOpenRef.current) return;
+            const drawerEl = drawerRef.current;
+            if (!drawerEl) return;
+            const maxScroll = Math.max(0, node.scrollHeight - node.clientHeight);
+            const drawerTop = drawerEl.offsetTop;
+            const targetScroll = Math.max(0, Math.min(drawerTop - gap, maxScroll));
+            const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+              ? "auto"
+              : "smooth";
+            node.scrollTo({ top: targetScroll, behavior });
+          });
+        });
       };
+      const scrollToTop = () => {
+        if (scrollFrame) cancelAnimationFrame(scrollFrame);
+        if (measureFrame) cancelAnimationFrame(measureFrame);
+        scrollFrame = 0;
+        measureFrame = 0;
+        scrollPending = false;
+        const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth";
+        node.scrollTo({ top: 0, behavior });
+      };
+      openDrawerWithScrollRef.current = scrollToSourceDrawer;
+      closeDrawerWithScrollRef.current = scrollToTop;
 
       const onWheel = (e: WheelEvent) => {
         if (e.deltaY <= 0) return;
         const atBottom = node.scrollHeight - node.scrollTop - node.clientHeight <= 20;
-        if (atBottom) {
-          requestAnimationFrame(() => {
-            setDrawerOpen(true);
-          });
-        }
+        if (atBottom) scrollToSourceDrawer();
       };
 
       const onKeyDown = (e: KeyboardEvent) => {
@@ -575,6 +596,7 @@ export function PlayPicker({
         if (e.key === " " && drawerOpenRef.current) {
           e.preventDefault();
           setDrawerOpen(false);
+          scrollToTop();
           return;
         }
 
@@ -590,6 +612,15 @@ export function PlayPicker({
       window.addEventListener("keydown", onKeyDown);
 
       return () => {
+        if (scrollFrame) cancelAnimationFrame(scrollFrame);
+        if (measureFrame) cancelAnimationFrame(measureFrame);
+        scrollPending = false;
+        if (openDrawerWithScrollRef.current === scrollToSourceDrawer) {
+          openDrawerWithScrollRef.current = null;
+        }
+        if (closeDrawerWithScrollRef.current === scrollToTop) {
+          closeDrawerWithScrollRef.current = null;
+        }
         node.removeEventListener("wheel", onWheel);
         window.removeEventListener("keydown", onKeyDown);
       };
@@ -1281,7 +1312,16 @@ export function PlayPicker({
                 <div ref={drawerRef}>
                   <SourceDrawer
                     open={drawerOpen}
-                    onToggle={() => setDrawerOpen((o) => !o)}
+                    onToggle={() => {
+                      if (drawerOpenRef.current) {
+                        setDrawerOpen(false);
+                        closeDrawerWithScrollRef.current?.();
+                      } else if (openDrawerWithScrollRef.current) {
+                        openDrawerWithScrollRef.current();
+                      } else {
+                        setDrawerOpen(true);
+                      }
+                    }}
                     count={allCount}
                     addonCount={addonCount}
                     usedAddons={usedAddons}
