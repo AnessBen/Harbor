@@ -52,8 +52,6 @@ export function contributorLabel(s: ScoredStream): string {
 }
 
 export function addonInstanceKey(s: { addonUrl?: string; addonId: string }): string {
-  const isPlugin = s.addonId.startsWith("plugin");
-  if (isPlugin) return s.addonId;
   return s.addonUrl ?? s.addonId;
 }
 
@@ -471,7 +469,7 @@ export function isWatchHub(s: ScoredStream): boolean {
   return /watchhub/i.test(s.addonId) || /watchhub/i.test(s.addonName ?? "");
 }
 
-const NEEDS_DOWNLOAD_RX = /[⏳⌛⬇⏬🔽📥]|\bdownload(ing)?\b|\bqueued?\b|\bnot[\s_-]?cached\b/iu;
+const NEEDS_DOWNLOAD_RX = /[⏳⌛⬇⏬🔽]|\bdownload(ing)?\b|\bqueued?\b|\bnot[\s_-]?cached\b/iu;
 export function needsDownload(s: ScoredStream): boolean {
   const haystack = `${s.name ?? ""} ${s.title ?? ""} ${s.description ?? ""}`;
   return NEEDS_DOWNLOAD_RX.test(haystack);

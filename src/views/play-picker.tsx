@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { shouldIgnoreSourceDrawerKey } from "@/views/play-picker/keyboard";
 import { resolveAddonLogo } from "@/components/addon-logo";
 import { torrentEngineStatus } from "@/lib/torrent/local-engine";
 import { directTorrentEnabled, torrentsDisabled } from "@/lib/torrent/stremio-stream";
@@ -585,13 +586,7 @@ export function PlayPicker({
       };
 
       const onKeyDown = (e: KeyboardEvent) => {
-        if (
-          e.target instanceof HTMLInputElement ||
-          e.target instanceof HTMLTextAreaElement ||
-          (e.target as HTMLElement)?.isContentEditable
-        ) {
-          return;
-        }
+        if (shouldIgnoreSourceDrawerKey(e.target, node)) return;
 
         if (e.key === " " && drawerOpenRef.current) {
           e.preventDefault();

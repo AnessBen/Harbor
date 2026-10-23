@@ -32,6 +32,7 @@ import {
 import { isCurrentStream, streamKey, SwitcherRow } from "./stream-switcher/switcher-row";
 import { useSwitcherRefresh } from "./stream-switcher/use-switcher-refresh";
 import { runnableStreamPlugins } from "@/lib/streams/plugins";
+import { PLUGIN_ADDON_PREFIX } from "@/lib/streams/plugins/addon";
 
 function isHiddenAddon(addonId: string, addonName?: string): boolean {
   const id = (addonId || "").toLowerCase();
@@ -123,7 +124,9 @@ export function StreamSwitcher({
       if (cancelled) return;
       const list = [...installed, ...stremio];
       const logoMap = addonLogoMap(list);
-      plugins.forEach(({ id, icon }) => icon && logoMap.set(id, icon));
+      plugins.forEach(
+        ({ id, icon }) => icon && logoMap.set(`${PLUGIN_ADDON_PREFIX}${id}`, icon),
+      );
       setAddonLogos(logoMap);
       setAddonNames(new Map([
         ...list.map((a) => [a.manifest.id, a.manifest.name] as const),
