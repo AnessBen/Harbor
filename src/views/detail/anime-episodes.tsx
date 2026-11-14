@@ -651,7 +651,10 @@ export const AnimeEpisodes = memo(function AnimeEpisodes({
     const q = query.trim().toLowerCase();
     if (!q) return null;
     return displayEpisodes.filter(
-      (e) => String(e.number).includes(q) || (e.title ?? "").toLowerCase().includes(q),
+      (e) =>
+        String(e.displayNumber ?? e.number).includes(q) ||
+        String(e.number).includes(q) ||
+        (e.title ?? "").toLowerCase().includes(q),
     );
   }, [query, displayEpisodes, aiMode, ai.matched]);
   const gridEpisodes = filteredEpisodes ?? displayEpisodes;
